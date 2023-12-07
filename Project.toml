@@ -1,0 +1,13 @@
+name = "QWave"
+uuid = "2608a847-4c41-4f71-820a-fc557464a20f"
+authors = ["Jan Kuhfeld <jan.kuhfeld@rub.de> and contributors"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
