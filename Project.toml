@@ -3,6 +3,9 @@ uuid = "2608a847-4c41-4f71-820a-fc557464a20f"
 authors = ["Jan Kuhfeld <jan.kuhfeld@rub.de> and contributors"]
 version = "1.0.0-DEV"
 
+[deps]
+LibSerialPort = "a05a14c7-6e3b-5ba9-90a2-45558833e1df"
+
 [compat]
 julia = "1"
 
