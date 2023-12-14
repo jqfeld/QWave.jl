@@ -21,7 +21,7 @@ sp = Spectrometer("/dev/ttyUSB0")
 
 ## Set exporure time to 100 ms
 
-@info set_exposure_time(sp, 100_000)
+@info set_exposure_time(sp, 500_000)
 
 ## Check exposure time
 

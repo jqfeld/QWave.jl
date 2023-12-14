@@ -26,46 +26,55 @@ end
 Base.close(s::Spectrometer) = Base.close(s.serial_port)
 
 
-abstract type CmdReturnCode end
-struct CmdSuccess <: CmdReturnCode end
-struct CmdInvalid <: CmdReturnCode end
-struct ParameterError <: CmdReturnCode end
-struct ValueInvalid <: CmdReturnCode end
-struct CodeInvalid <: CmdReturnCode end
-struct DeviceLocked <: CmdReturnCode end
-struct FunctionNotSupported <: CmdReturnCode end
-struct ComTimeOut <: CmdReturnCode end
-struct ValueNotAvailable <: CmdReturnCode end
-struct DeviceNotResetted <: CmdReturnCode end
-return_codes = Dict(
-  '0' => CmdSuccess(),
-  '1' => CmdInvalid(),
-  '2' => ParameterError(),
-  '3' => ValueInvalid(),
-  '4' => CodeInvalid(),
-  '5' => DeviceLocked(),
-  '6' => FunctionNotSupported(),
-  '7' => ComTimeOut(),
-  '8' => ValueNotAvailable(),
-  '9' => DeviceNotResetted()
-)
+# abstract type CmdReturnCode end
+# struct CmdSuccess <: CmdReturnCode end
+# struct CmdInvalid <: CmdReturnCode end
+# struct ParameterError <: CmdReturnCode end
+# struct ValueInvalid <: CmdReturnCode end
+# struct CodeInvalid <: CmdReturnCode end
+# struct DeviceLocked <: CmdReturnCode end
+# struct FunctionNotSupported <: CmdReturnCode end
+# struct ComTimeOut <: CmdReturnCode end
+# struct ValueNotAvailable <: CmdReturnCode end
+# struct DeviceNotResetted <: CmdReturnCode end
+# return_codes = Dict(
+#   '0' => CmdSuccess(),
+#   '1' => CmdInvalid(),
+#   '2' => ParameterError(),
+#   '3' => ValueInvalid(),
+#   '4' => CodeInvalid(),
+#   '5' => DeviceLocked(),
+#   '6' => FunctionNotSupported(),
+#   '7' => ComTimeOut(),
+#   '8' => ValueNotAvailable(),
+#   '9' => DeviceNotResetted()
+# )
+#
+
+@enum CmdReturnCode begin
+  CmdSuccess = 0
+  CmdInvalid = 1
+  ParameterError = 2
+  ValueInvalid = 3
+  CodeInvalid = 4
+  DeviceLocked = 5
+  FunctionNotSupported = 6
+  ComTimeOut = 7
+  ValueNotAvailable = 8
+  DeviceNotResetted = 9
+end
+
+Base.parse(::Type{CmdReturnCode}, str) = CmdReturnCode(parse(Int, str))
 
 
-abstract type StatusCode end
-struct Idle <: StatusCode end
-struct WaitingForTrigger <: StatusCode end
-struct TakingSpectrum <: StatusCode end
-struct HasData <: StatusCode end
-struct Error <: StatusCode end
-status_codes = Dict(
-  "0" => Idle(),
-  "1" => WaitingForTrigger(),
-  "2" => TakingSpectrum(),
-  "3" => HasData(),
-  "-1" => Error() # not used according to manual 
-)
-StatusCode(c) = status_codes[c]
-Base.parse(::Type{StatusCode}, str) = status_codes[str]
+@enum StatusCode begin
+  Idle = 0
+  WaitingForTrigger = 1
+  TakingSpectrum = 2
+  HasData = 3
+  Error = -1
+end
+Base.parse(::Type{StatusCode}, str) = StatusCode(parse(Int, str))
 
 struct SpectrumData
   data::Vector{UInt16}
@@ -82,6 +91,8 @@ function SpectrumData(data::Vector{UInt8})
   checksum = data[end]
   SpectrumData(converted_data, checksum)
 end
+Base.parse(::Type{SpectrumData}, str) = SpectrumData(Vector{UInt8}(str))
+
 
 struct CmdResult{C<:CmdReturnCode,T}
   code::C
@@ -98,42 +109,21 @@ function send_cmd(s::Spectrometer, cmd;
 end
 
 function parse_response(s::Spectrometer, type=nothing;
-  from_string=false,
   timeout=10.0)
   set_read_timeout(s.serial_port, timeout)
-  return_code = return_codes[read(s.serial_port, Char)]
+  return_code = parse(CmdReturnCode, read(s.serial_port, Char))
   @debug return_code
   return_value = nothing
-  if return_code == CmdSuccess()
-    # data = UInt8[]
-    #read data up to "\r\n"
-    # stop = false
-    # while stop == false
-    #   bytes = read(s.serial_port)
-    #   @debug bytes
-    #   append!(data, bytes)
-    #   if (length(data) >= 2) && data[end-1:end] == [0x0d, 0x0a] 
-    #     deleteat!(data, length(data)-1:length(data)) 
-    #     stop = true
-    #   end
-    #   sleep(0.1)
-    # end
-    data_str = readuntil(s.serial_port, "\r\n")
-    data = Vector{UInt8}(lstrip(data_str))
-
-    # clean data: remove white space at the beginning
-    # if !isnothing(type) && first(data) == 0x20
-    #   popfirst!(data)
-    # end
+  if return_code == CmdSuccess
+    data = readuntil(s.serial_port, "\r\n") |> lstrip
 
     @debug data
     @debug length(data)
+
     return_value = if isnothing(type)
       nothing
-    elseif from_string
-      parse(type, String(data))
     else
-      type(data)
+      parse(type, data)
     end
   end
   clear_read_timeout(s.serial_port)
@@ -146,7 +136,7 @@ end
 
 function get_status(s::Spectrometer)
   send_cmd(s, "s?")
-  parse_response(s, StatusCode; from_string=true)
+  parse_response(s, StatusCode;)
 end
 
 function get_data(s::Spectrometer)
@@ -168,7 +158,7 @@ end
 
 function get_exposure_time(s::Spectrometer)
   send_cmd(s, "T?")
-  parse_response(s, Int; from_string=true)
+  parse_response(s, Int;)
 end
 
 function set_exposure_time(s::Spectrometer, time_μs)
